@@ -1,5 +1,12 @@
 package com.mkj.rapipay.web;
 
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpSession;
 import javax.validation.Valid;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,9 +18,11 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.mkj.rapipay.dto.RapipayClientDTOUser;
+import com.mkj.rapipay.entity.Product;
 import com.mkj.rapipay.entity.RapipayClient;
 import com.mkj.rapipay.execptions.MinBalanceException;
 import com.mkj.rapipay.service.IRapipayClientService;
@@ -27,8 +36,6 @@ public class RapipayClientWebLayer {
 	private IRapipayClientService rapipayClientService;
 	
 	public RapipayClientWebLayer() {
-		super();
-		// TODO Auto-generated constructor stub
 		System.out.println("constructor called //");
 	}
 
@@ -39,6 +46,35 @@ public class RapipayClientWebLayer {
 	}
 	
 	
+	@PostMapping("/login")
+	public String doLogin(@RequestParam String username,
+			               @RequestParam String password,
+			               HttpServletRequest request)
+	{
+		String msg = "";
+		// ... code how to login
+		// from DB using repository class
+		if(username.equals("mike")&&password.equals("123"))
+		{
+			// Cart
+			List<Product> userCart = new ArrayList<>();
+			
+			System.out.println("Session Created ");
+			HttpSession session = request.getSession(true); // always create new session
+			session.setMaxInactiveInterval(30);
+			session.setAttribute("username",username);
+			session.setAttribute("loginTime",session.getCreationTime());
+			session.setAttribute("cashback",10);
+			
+			msg = "Session Created for "+username+" time "+session.getCreationTime();
+			// session.setAttribute("cart",userCart);
+			
+		}
+		
+		
+		
+		return msg;
+	}
 	
 	@PostMapping("/registration")
 	public ResponseEntity<RapipayClientDTOUser> addClient(@RequestBody @Valid  RapipayClient client)
@@ -78,21 +114,46 @@ public class RapipayClientWebLayer {
 	
 	
 	@GetMapping("/clientname/{clientName}")  // ....localhost:8080/client/clientname/Amit
-	public RapipayClientDTOUser getClientBasedOnName(@PathVariable String clientName)throws javax.persistence.NoResultException
+	public RapipayClientDTOUser getClientBasedOnName(
+			@PathVariable String clientName,
+			HttpServletRequest request)throws javax.persistence.NoResultException
+	
 	{
-		// ---- 
-		// code to call service wrt to get CLient based on ID
+		HttpSession session = request.getSession(false); // return already created session :- JSessionID
+		if(session!=null)
+		{
+			String username = (String)session.getAttribute("username");
+			System.out.println("===>> INFO Session Output 101 :- "+username);
+
+			
+			RapipayClientDTOUser clientDTO = rapipayClientService.getCLientBasedOnClientName(clientName);
+			
+			
+			return clientDTO;
+		}
+		else return null;
 		
-		RapipayClientDTOUser clientDTO = rapipayClientService.getCLientBasedOnClientName(clientName);
 		
-		
-		return clientDTO;
 	}
 	
 	
 	
-	
-	
+	@GetMapping("/logout/{username}")
+	public String logout(@PathVariable String username,HttpServletRequest request)
+	{
+		HttpSession session = request.getSession(false);
+		if(session != null)
+		{
+			// optional code
+			session.removeAttribute("username");
+			session.removeAttribute("loginTime");
+			session.removeAttribute("cashback");
+			
+			session.invalidate(); // logout
+			return "Logout , Pls. login again to continue "+LocalTime.now();
+		}
+		else return "Login through Valid user";
+	}
 	
 	
 	

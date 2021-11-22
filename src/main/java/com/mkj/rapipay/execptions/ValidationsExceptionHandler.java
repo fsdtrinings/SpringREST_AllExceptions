@@ -25,7 +25,8 @@ public class ValidationsExceptionHandler extends ResponseEntityExceptionHandler{
 		Map<String, String> map = new HashMap<>();
 		   // fieldName, errorMsg
 		
-		List<ObjectError> list = exp.getBindingResult().getAllErrors();// all validations exceptions with fieldname and error render msg
+		List<ObjectError> list = exp.getBindingResult().getAllErrors();
+		// all validations exceptions with fieldname and error render msg
 		list.stream().forEach((e)->{
 			String fieldName = ((FieldError)e).getField();
 		    String errorMsg = e.getDefaultMessage();
