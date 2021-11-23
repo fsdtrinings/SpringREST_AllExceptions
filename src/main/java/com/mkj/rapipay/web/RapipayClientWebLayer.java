@@ -10,6 +10,13 @@ import javax.servlet.http.HttpSession;
 import javax.validation.Valid;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.server.mvc.WebMvcLinkBuilder;
+
+
+
+
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -25,6 +32,7 @@ import com.mkj.rapipay.dto.RapipayClientDTOUser;
 import com.mkj.rapipay.entity.Product;
 import com.mkj.rapipay.entity.RapipayClient;
 import com.mkj.rapipay.execptions.MinBalanceException;
+import com.mkj.rapipay.repository.RapipayClientRepository;
 import com.mkj.rapipay.service.IRapipayClientService;
 
 @RestController
@@ -34,6 +42,10 @@ public class RapipayClientWebLayer {
 
 	@Autowired
 	private IRapipayClientService rapipayClientService;
+	
+	@Autowired
+	private RapipayClientRepository repo; 
+	
 	
 	public RapipayClientWebLayer() {
 		System.out.println("constructor called //");
@@ -45,6 +57,25 @@ public class RapipayClientWebLayer {
 		return "Rapipay client Hello";
 	}
 	
+	@GetMapping("/allclients")
+	public List<RapipayClientDTOUser> getAllClients()
+	{
+		List<RapipayClientDTOUser> list = new ArrayList<>();
+		
+		for (RapipayClient client: repo.findAll() ) {
+			
+			RapipayClientDTOUser clientDTO = new RapipayClientDTOUser();
+			clientDTO.setAccountNumber(client.getClientId());
+			clientDTO.setBalance(client.getBalance());
+			clientDTO.setBankName(client.getBankInfo().getBankName());
+			clientDTO.setClientName(client.getClientName());
+			
+			list.add(clientDTO);
+		}
+		
+		return list; // clients as DTO
+		
+	}
 	
 	@PostMapping("/login")
 	public String doLogin(@RequestParam String username,
@@ -77,7 +108,7 @@ public class RapipayClientWebLayer {
 	}
 	
 	@PostMapping("/registration")
-	public ResponseEntity<RapipayClientDTOUser> addClient(@RequestBody @Valid  RapipayClient client)
+	public ResponseEntity<EntityModel<RapipayClientDTOUser>> addClient(@RequestBody @Valid  RapipayClient client)
 	 throws MinBalanceException
 	{
 		System.out.println(" inside registration "+client);
@@ -91,9 +122,39 @@ public class RapipayClientWebLayer {
 			// 1. code to call client service to add the client
 			RapipayClientDTOUser clientDTO = rapipayClientService.registerClient(client);
 			
-				
+			// adding link to access all clinets (option code for HATEAOS)
+			EntityModel<RapipayClientDTOUser> resource = EntityModel.of(clientDTO); // [Entity class + links]
+			// use to append links in the result
+			
+			
+			
+			WebMvcLinkBuilder linkforAllClints = WebMvcLinkBuilder.linkTo(
+			         WebMvcLinkBuilder.methodOn(this.getClass()).getAllClients());
+	
+	
+			WebMvcLinkBuilder linkforClintByName = WebMvcLinkBuilder.linkTo(
+			         WebMvcLinkBuilder.methodOn(this.getClass()).getClientBasedOnName(clientDTO.getClientName()));
+	
+	
+	
+			
+			// add link to the resource
+			resource.add(linkforAllClints.withRel("Click here to Get All Clients"));
+			resource.add(linkforClintByName.withRel("Click here to Get All Clients"));
+			
+					
+			return new ResponseEntity<EntityModel<RapipayClientDTOUser>>(resource,HttpStatus.OK);	
+			
+			
+			
+		//	WebMvcLinkBuilder linkToAllStocks = linkTo(methodOn(this.getClass()).getAllStocks());
+		//	WebMvcLinkBuilder linkToExchangeStock = linkTo(methodOn(this.getClass()).getAllStocksByExchange());
+			
+		//	resource.add(linkToAllStocks.withRel("Click here to view all stocks"));
+			
+			
 			// generate return statement (ResponseEntity)
-			return new ResponseEntity<RapipayClientDTOUser>(clientDTO, HttpStatus.CREATED);
+			//return new ResponseEntity<RapipayClientDTOUser>(clientDTO, HttpStatus.CREATED);
 		}
 		
 		
@@ -115,25 +176,32 @@ public class RapipayClientWebLayer {
 	
 	@GetMapping("/clientname/{clientName}")  // ....localhost:8080/client/clientname/Amit
 	public RapipayClientDTOUser getClientBasedOnName(
-			@PathVariable String clientName,
-			HttpServletRequest request)throws javax.persistence.NoResultException
+			@PathVariable String clientName)throws javax.persistence.NoResultException
 	
 	{
+		
+		RapipayClientDTOUser clientDTO = rapipayClientService.getCLientBasedOnClientName(clientName);
+		return clientDTO;
+		
+		/*
+		    uncomment in case of session handling
+		    
 		HttpSession session = request.getSession(false); // return already created session :- JSessionID
 		if(session!=null)
 		{
 			String username = (String)session.getAttribute("username");
 			System.out.println("===>> INFO Session Output 101 :- "+username);
-
-			
 			RapipayClientDTOUser clientDTO = rapipayClientService.getCLientBasedOnClientName(clientName);
 			
 			
 			return clientDTO;
-		}
+
+			
+					}
 		else return null;
-		
-		
+		*/
+	
+
 	}
 	
 	
